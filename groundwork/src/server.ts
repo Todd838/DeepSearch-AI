@@ -20,8 +20,8 @@ export class ChatAgent extends AIChatAgent<Env> {
     const workersai = createWorkersAI({ binding: this.env.AI });
 
     const result = streamText({
-      model: workersai("@cf/meta/llama-3.3-70b-instruct-fp8-fast"),
-      system: `You are DeepSearch AI, an expert multi-step research agent. 
+      model: workersai("@cf/zai-org/glm-4.7-flash"),
+      system: `You are DeepSearch AI, an expert multi-step research agent.
 
 When a user asks a research question, you must:
 1. DECOMPOSE the question into 2-3 specific sub-topics to research
@@ -31,7 +31,7 @@ When a user asks a research question, you must:
 
 Always think step by step. Show your reasoning. Use multiple searches to build a complete picture.
 Format your final answer with clear sections: Summary, Key Findings, and Conclusion.
-Cite your sources.`,
+Cite your sources. Do not output tool calls as plain text; always invoke tools.`,
       messages: pruneMessages({
         messages: await convertToModelMessages(this.messages),
         toolCalls: "before-last-2-messages"
