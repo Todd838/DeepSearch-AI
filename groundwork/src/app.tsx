@@ -324,32 +324,16 @@ function Chat() {
     }
   }, [input, isStreaming, sendMessage]);
 
-  const theme = {
-    bg: "#080818",
-    header: "#111133",
-    panel: "#0f0f24",
-    panelBorder: "#1f1f3b",
-    accent: "#7c3aed",
-    text: "#e2e8f0",
-    muted: "#a1a1c7",
-    bubbleUser: "#7c3aed",
-    bubbleAssistant: "#111133"
-  };
-
   return (
     <div
-      className="flex flex-col h-screen"
-      style={{ backgroundColor: theme.bg, color: theme.text }}
+      className="flex flex-col h-screen ds-root"
     >
       {/* Header */}
-      <header
-        className="px-5 py-4 border-b"
-        style={{ backgroundColor: theme.header, borderColor: theme.panelBorder }}
-      >
+      <header className="px-5 py-4 border-b ds-header">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold">
-              <span className="mr-2" style={{ color: theme.accent }}>
+              <span className="mr-2 ds-accent">
                 🔎
               </span>
               DeepSearch AI
@@ -393,12 +377,7 @@ function Chat() {
       </header>
 
       {/* Messages */}
-      <div
-        className="flex-1 overflow-y-auto"
-        style={{
-          background: "linear-gradient(180deg, #080818 0%, #0b0b22 100%)"
-        }}
-      >
+      <div className="flex-1 overflow-y-auto ds-surface">
         <div className="max-w-3xl mx-auto px-5 py-6 space-y-5 relative">
           {promptBubble && (
             <button
