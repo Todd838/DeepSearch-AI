@@ -1,6 +1,5 @@
 import { createWorkersAI } from "workers-ai-provider";
 import { routeAgentRequest, type Schedule } from "agents";
-import { getSchedulePrompt, scheduleSchema } from "agents/schedule";
 import { AIChatAgent } from "@cloudflare/ai-chat";
 import {
   streamText,
@@ -22,127 +21,59 @@ export class ChatAgent extends AIChatAgent<Env> {
 
     const result = streamText({
       model: workersai("@cf/meta/llama-3.3-70b-instruct-fp8-fast"),
-      system: `You are a helpful assistant. You can check the weather, get the user's timezone, run calculations, and schedule tasks.
+      system: `You are DeepSearch AI, an expert multi-step research agent. 
 
-${getSchedulePrompt({ date: new Date() })}
+When a user asks a research question, you must:
+1. DECOMPOSE the question into 2-3 specific sub-topics to research
+2. SEARCH each sub-topic using the webSearch tool
+3. ANALYZE the results and extract key findings
+4. SYNTHESIZE everything into a clear, structured research brief
 
-If the user asks to schedule a task, use the schedule tool to schedule the task.`,
-      // Prune old tool calls to save tokens on long conversations
+Always think step by step. Show your reasoning. Use multiple searches to build a complete picture.
+Format your final answer with clear sections: Summary, Key Findings, and Conclusion.
+Cite your sources.`,
       messages: pruneMessages({
         messages: await convertToModelMessages(this.messages),
         toolCalls: "before-last-2-messages"
       }),
       tools: {
-        // Server-side tool: runs automatically on the server
-        getWeather: tool({
-          description: "Get the current weather for a city",
+        webSearch: tool({
+          description: "Search the web for information on a topic. Use this multiple times to research different aspects of the question.",
           inputSchema: z.object({
-            city: z.string().describe("City name")
+            query: z.string().describe("The search query"),
           }),
-          execute: async ({ city }) => {
-            // Replace with a real weather API in production
-            const conditions = ["sunny", "cloudy", "rainy", "snowy"];
-            const temp = Math.floor(Math.random() * 30) + 5;
+          execute: async ({ query }) => {
+            const response = await fetch("https://api.tavily.com/search", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${(this.env as any).TAVILY_API_KEY}`,
+              },
+              body: JSON.stringify({
+                query,
+                max_results: 5,
+                search_depth: "basic",
+              }),
+            });
+            const data = await response.json() as any;
             return {
-              city,
-              temperature: temp,
-              condition:
-                conditions[Math.floor(Math.random() * conditions.length)],
-              unit: "celsius"
+              query,
+              results: data.results?.map((r: any) => ({
+                title: r.title,
+                url: r.url,
+                content: r.content?.slice(0, 500),
+              })) ?? [],
             };
-          }
+          },
         }),
 
-        // Client-side tool: no execute function — the browser handles it
         getUserTimezone: tool({
-          description:
-            "Get the user's timezone from their browser. Use this when you need to know the user's local time.",
-          inputSchema: z.object({})
-        }),
-
-        // Approval tool: requires user confirmation before executing
-        calculate: tool({
-          description:
-            "Perform a math calculation with two numbers. Requires user approval for large numbers.",
-          inputSchema: z.object({
-            a: z.number().describe("First number"),
-            b: z.number().describe("Second number"),
-            operator: z
-              .enum(["+", "-", "*", "/", "%"])
-              .describe("Arithmetic operator")
-          }),
-          needsApproval: async ({ a, b }) =>
-            Math.abs(a) > 1000 || Math.abs(b) > 1000,
-          execute: async ({ a, b, operator }) => {
-            const ops: Record<string, (x: number, y: number) => number> = {
-              "+": (x, y) => x + y,
-              "-": (x, y) => x - y,
-              "*": (x, y) => x * y,
-              "/": (x, y) => x / y,
-              "%": (x, y) => x % y
-            };
-            if (operator === "/" && b === 0) {
-              return { error: "Division by zero" };
-            }
-            return {
-              expression: `${a} ${operator} ${b}`,
-              result: ops[operator](a, b)
-            };
-          }
-        }),
-
-        scheduleTask: tool({
-          description:
-            "Schedule a task to be executed at a later time. Use this when the user asks to be reminded or wants something done later.",
-          inputSchema: scheduleSchema,
-          execute: async ({ when, description }) => {
-            if (when.type === "no-schedule") {
-              return "Not a valid schedule input";
-            }
-            const input =
-              when.type === "scheduled"
-                ? when.date
-                : when.type === "delayed"
-                  ? when.delayInSeconds
-                  : when.type === "cron"
-                    ? when.cron
-                    : null;
-            if (!input) return "Invalid schedule type";
-            try {
-              this.schedule(input, "executeTask", description);
-              return `Task scheduled: "${description}" (${when.type}: ${input})`;
-            } catch (error) {
-              return `Error scheduling task: ${error}`;
-            }
-          }
-        }),
-
-        getScheduledTasks: tool({
-          description: "List all tasks that have been scheduled",
+          description: "Get the user's timezone from their browser.",
           inputSchema: z.object({}),
-          execute: async () => {
-            const tasks = this.getSchedules();
-            return tasks.length > 0 ? tasks : "No scheduled tasks found.";
-          }
         }),
-
-        cancelScheduledTask: tool({
-          description: "Cancel a scheduled task by its ID",
-          inputSchema: z.object({
-            taskId: z.string().describe("The ID of the task to cancel")
-          }),
-          execute: async ({ taskId }) => {
-            try {
-              this.cancelSchedule(taskId);
-              return `Task ${taskId} cancelled.`;
-            } catch (error) {
-              return `Error cancelling task: ${error}`;
-            }
-          }
-        })
       },
       onFinish,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(10),
       abortSignal: options?.abortSignal
     });
 
@@ -150,13 +81,7 @@ If the user asks to schedule a task, use the schedule tool to schedule the task.
   }
 
   async executeTask(description: string, _task: Schedule<string>) {
-    // Do the actual work here (send email, call API, etc.)
     console.log(`Executing scheduled task: ${description}`);
-
-    // Notify connected clients via a broadcast event.
-    // We use broadcast() instead of saveMessages() to avoid injecting
-    // into chat history — that would cause the AI to see the notification
-    // as new context and potentially loop.
     this.broadcast(
       JSON.stringify({
         type: "scheduled-task",
