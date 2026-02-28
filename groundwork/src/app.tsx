@@ -30,6 +30,15 @@ import {
   BugIcon
 } from "@phosphor-icons/react";
 
+const defaultPrompts = [
+  "What are the latest AI trends for 2026?",
+  "Research the future of electric vehicles.",
+  "Compare CRMs for a 5-person startup.",
+  "Summarize the key risks in the EU AI Act.",
+  "Find the most cited papers on transformer optimization.",
+  "What are the trade-offs between RAG and fine-tuning?"
+];
+
 // ── Small components ──────────────────────────────────────────────────
 
 function ThemeToggle() {
@@ -76,7 +85,7 @@ function ToolPartView({
   if (part.state === "output-available") {
     return (
       <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line">
+        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line ds-panel">
           <div className="flex items-center gap-2 mb-1">
             <GearIcon size={14} className="text-kumo-inactive" />
             <Text size="xs" variant="secondary" bold>
@@ -99,7 +108,7 @@ function ToolPartView({
     const approvalId = (part.approval as { id?: string })?.id;
     return (
       <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-3 rounded-xl ring-2 ring-kumo-warning">
+        <Surface className="max-w-[85%] px-4 py-3 rounded-xl ring-2 ring-kumo-warning ds-panel">
           <div className="flex items-center gap-2 mb-2">
             <GearIcon size={14} className="text-kumo-warning" />
             <Text size="sm" bold>
@@ -150,7 +159,7 @@ function ToolPartView({
   ) {
     return (
       <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line">
+        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line ds-panel">
           <div className="flex items-center gap-2">
             <XCircleIcon size={14} className="text-kumo-danger" />
             <Text size="xs" variant="secondary" bold>
@@ -167,7 +176,7 @@ function ToolPartView({
   if (part.state === "input-available" || part.state === "input-streaming") {
     return (
       <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line">
+        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line ds-panel">
           <div className="flex items-center gap-2">
             <GearIcon size={14} className="text-kumo-inactive animate-spin" />
             <Text size="xs" variant="secondary">
@@ -188,9 +197,15 @@ function Chat() {
   const [connected, setConnected] = useState(false);
   const [input, setInput] = useState("");
   const [showDebug, setShowDebug] = useState(false);
+  const [promptSuggestions, setPromptSuggestions] =
+    useState<string[]>(defaultPrompts);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toasts = useKumoToastManager();
+  const [promptBubble, setPromptBubble] = useState<{
+    id: number;
+    text: string;
+  } | null>(null);
 
   const agent = useAgent({
     agent: "ChatAgent",
@@ -250,6 +265,48 @@ function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      try {
+        const response = await fetch("/api/suggestions");
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          suggestions?: string[];
+        };
+        if (data.suggestions && data.suggestions.length > 0) {
+          setPromptSuggestions(data.suggestions);
+        }
+      } catch {
+        // Keep default prompts if request fails
+      }
+    };
+
+    fetchSuggestions();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let timeoutId: number | undefined;
+    const showBubble = () => {
+      const options =
+        promptSuggestions.length > 0 ? promptSuggestions : defaultPrompts;
+      const text = options[Math.floor(Math.random() * options.length)];
+      setPromptBubble({ id: Date.now(), text });
+      timeoutId = window.setTimeout(() => {
+        if (active) setPromptBubble(null);
+      }, 6500);
+    };
+
+    showBubble();
+    const intervalId = window.setInterval(showBubble, 10000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [promptSuggestions]);
+
   // Re-focus the input after streaming ends
   useEffect(() => {
     if (!isStreaming && textareaRef.current) {
@@ -267,16 +324,37 @@ function Chat() {
     }
   }, [input, isStreaming, sendMessage]);
 
+  const theme = {
+    bg: "#080818",
+    header: "#111133",
+    panel: "#0f0f24",
+    panelBorder: "#1f1f3b",
+    accent: "#7c3aed",
+    text: "#e2e8f0",
+    muted: "#a1a1c7",
+    bubbleUser: "#7c3aed",
+    bubbleAssistant: "#111133"
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-kumo-elevated">
+    <div
+      className="flex flex-col h-screen"
+      style={{ backgroundColor: theme.bg, color: theme.text }}
+    >
       {/* Header */}
-      <header className="px-5 py-4 bg-kumo-base border-b border-kumo-line">
+      <header
+        className="px-5 py-4 border-b"
+        style={{ backgroundColor: theme.header, borderColor: theme.panelBorder }}
+      >
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-kumo-default">
-              <span className="mr-2">⛅</span>Agent Starter
+            <h1 className="text-lg font-semibold">
+              <span className="mr-2" style={{ color: theme.accent }}>
+                🔎
+              </span>
+              DeepSearch AI
             </h1>
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="ds-badge">
               <ChatCircleDotsIcon size={12} weight="bold" className="mr-1" />
               AI Chat
             </Badge>
@@ -306,33 +384,52 @@ function Chat() {
               variant="secondary"
               icon={<TrashIcon size={16} />}
               onClick={clearHistory}
+              className="ds-button-secondary"
             >
-              Clear
+              <span className="ds-clear-label">Clear</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-5 py-6 space-y-5">
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{
+          background: "linear-gradient(180deg, #080818 0%, #0b0b22 100%)"
+        }}
+      >
+        <div className="max-w-3xl mx-auto px-5 py-6 space-y-5 relative">
+          {promptBubble && (
+            <button
+              key={promptBubble.id}
+              type="button"
+              className="ds-prompt-bubble"
+              onClick={() => {
+                sendMessage({
+                  role: "user",
+                  parts: [{ type: "text", text: promptBubble.text }]
+                });
+              }}
+            >
+              <span className="ds-prompt-title">Try this</span>
+              <span className="ds-prompt-text">{promptBubble.text}</span>
+            </button>
+          )}
           {messages.length === 0 && (
             <Empty
               icon={<ChatCircleDotsIcon size={32} />}
               title="Start a conversation"
+              className="ds-empty"
               contents={
                 <div className="flex flex-wrap justify-center gap-2">
-                  {[
-                    "What's the weather in Paris?",
-                    "What timezone am I in?",
-                    "Calculate 5000 * 3",
-                    "Remind me in 5 minutes to take a break"
-                  ].map((prompt) => (
+                  {[...promptSuggestions].slice(0, 4).map((prompt) => (
                     <Button
                       key={prompt}
                       variant="outline"
                       size="sm"
                       disabled={isStreaming}
+                      className="ds-button-outline"
                       onClick={() => {
                         sendMessage({
                           role: "user",
@@ -424,7 +521,7 @@ function Chat() {
                     if (isUser) {
                       return (
                         <div key={i} className="flex justify-end">
-                          <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-md bg-kumo-contrast text-kumo-inverse leading-relaxed">
+                          <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-md ds-bubble-user leading-relaxed">
                             {text}
                           </div>
                         </div>
@@ -433,7 +530,7 @@ function Chat() {
 
                     return (
                       <div key={i} className="flex justify-start">
-                        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-kumo-base text-kumo-default leading-relaxed">
+                        <div className="max-w-[85%] rounded-2xl rounded-bl-md ds-bubble-assistant leading-relaxed">
                           <Streamdown
                             className="sd-theme rounded-2xl rounded-bl-md p-3"
                             controls={false}
@@ -454,7 +551,7 @@ function Chat() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-kumo-line bg-kumo-base">
+        <div className="border-t border-kumo-line bg-kumo-base">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -462,7 +559,7 @@ function Chat() {
           }}
           className="max-w-3xl mx-auto px-5 py-4"
         >
-          <div className="flex items-end gap-3 rounded-xl border border-kumo-line bg-kumo-base p-3 shadow-sm focus-within:ring-2 focus-within:ring-kumo-ring focus-within:border-transparent transition-shadow">
+          <div className="flex items-end gap-3 rounded-xl border border-kumo-line bg-kumo-base p-3 shadow-sm focus-within:ring-2 focus-within:ring-kumo-ring focus-within:border-transparent transition-shadow ds-input">
             <InputArea
               ref={textareaRef}
               value={input}
@@ -481,7 +578,7 @@ function Chat() {
               placeholder="Send a message..."
               disabled={!connected || isStreaming}
               rows={1}
-              className="flex-1 !ring-0 focus:!ring-0 !shadow-none !bg-transparent !outline-none resize-none max-h-40"
+              className="flex-1 !ring-0 focus:!ring-0 !shadow-none !bg-transparent !outline-none resize-none max-h-40 ds-input-area"
             />
             {isStreaming ? (
               <Button
@@ -491,7 +588,7 @@ function Chat() {
                 aria-label="Stop generation"
                 icon={<StopIcon size={18} />}
                 onClick={stop}
-                className="mb-0.5"
+                className="mb-0.5 ds-button-secondary"
               />
             ) : (
               <Button
@@ -501,7 +598,7 @@ function Chat() {
                 aria-label="Send message"
                 disabled={!input.trim() || !connected}
                 icon={<PaperPlaneRightIcon size={18} />}
-                className="mb-0.5"
+                className="mb-0.5 ds-button-primary"
               />
             )}
           </div>

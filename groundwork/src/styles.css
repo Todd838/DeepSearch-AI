@@ -10,3 +10,148 @@ body,
   height: 100%;
   margin: 0;
 }
+
+.sd-theme a {
+  color: #7c3aed;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  pointer-events: auto;
+}
+
+.sd-theme a:hover {
+  opacity: 0.85;
+}
+
+.ds-panel {
+  background-color: #111133;
+  border-color: #1f1f3b;
+  color: #e2e8f0;
+}
+
+.ds-bubble-user {
+  background-color: #7c3aed;
+  color: #f8fafc;
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.18);
+}
+
+.ds-bubble-assistant {
+  background-color: #111133;
+  color: #e2e8f0;
+  border: 1px solid #1f1f3b;
+  box-shadow: 0 8px 20px rgba(8, 8, 24, 0.4);
+}
+
+.ds-input {
+  background-color: #111133;
+  border-color: #1f1f3b;
+}
+
+.ds-input-area {
+  color: #e2e8f0;
+}
+
+.ds-input-area::placeholder {
+  color: #a1a1c7;
+}
+
+.ds-badge {
+  background-color: rgba(124, 58, 237, 0.15);
+  color: #e2e8f0;
+  border: 1px solid #3b2a5e;
+}
+
+.ds-button-primary {
+  background-color: #7c3aed;
+  color: #f8fafc;
+  border: 1px solid rgba(124, 58, 237, 0.6);
+  box-shadow: 0 8px 18px rgba(124, 58, 237, 0.25);
+}
+
+.ds-button-secondary {
+  background-color: #111133;
+  color: #ffffff;
+  border: 1px solid #1f1f3b;
+}
+
+.ds-button-secondary,
+.ds-button-secondary * {
+  color: #ffffff !important;
+}
+
+.ds-clear-label {
+  color: #ffffff !important;
+}
+
+.ds-button-outline {
+  background-color: transparent;
+  color: #e2e8f0;
+  border: 1px solid #3b2a5e;
+}
+
+.ds-button-outline:hover,
+.ds-button-secondary:hover {
+  border-color: #7c3aed;
+}
+
+.ds-button-primary:hover {
+  filter: brightness(1.05);
+}
+
+.ds-empty {
+  background-color: #0f0f24;
+  border: 1px solid #1f1f3b;
+}
+
+.ds-prompt-bubble {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  max-width: 320px;
+  background: rgba(17, 17, 51, 0.9);
+  border: 1px solid #3b2a5e;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  box-shadow: 0 12px 24px rgba(8, 8, 24, 0.55);
+  backdrop-filter: blur(6px);
+  text-align: left;
+  animation: ds-pop 6.5s ease-in-out;
+}
+
+.ds-prompt-bubble:hover {
+  border-color: #7c3aed;
+}
+
+.ds-prompt-title {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a1a1c7;
+  margin-bottom: 4px;
+}
+
+.ds-prompt-text {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+@keyframes ds-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}

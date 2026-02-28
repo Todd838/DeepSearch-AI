@@ -8,6 +8,7 @@ declare namespace Cloudflare {
 	}
 	interface Env {
 		AI: Ai;
+		TAVILY_API_KEY: string;
 		ChatAgent: DurableObjectNamespace<import("./src/server").ChatAgent>;
 	}
 }

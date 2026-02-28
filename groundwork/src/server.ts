@@ -43,11 +43,14 @@ Cite your sources. Do not output tool calls as plain text; always invoke tools.`
             query: z.string().describe("The search query"),
           }),
           execute: async ({ query }) => {
+            const apiKey = this.env.TAVILY_API_KEY;
+            console.log("Tavily API key exists:", !!apiKey);
+
             const response = await fetch("https://api.tavily.com/search", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${(this.env as any).TAVILY_API_KEY}`,
+                "Authorization": `Bearer ${apiKey}`,
               },
               body: JSON.stringify({
                 query,
@@ -55,7 +58,11 @@ Cite your sources. Do not output tool calls as plain text; always invoke tools.`
                 search_depth: "basic",
               }),
             });
+
             const data = await response.json() as any;
+            console.log("Tavily response status:", response.status);
+            console.log("Tavily data:", JSON.stringify(data));
+
             return {
               query,
               results: data.results?.map((r: any) => ({
@@ -94,6 +101,33 @@ Cite your sources. Do not output tool calls as plain text; always invoke tools.`
 
 export default {
   async fetch(request: Request, env: Env) {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/suggestions") {
+      const response = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${env.TAVILY_API_KEY}`
+        },
+        body: JSON.stringify({
+          query: "latest technology and business trends 2026",
+          max_results: 6,
+          search_depth: "basic"
+        })
+      });
+      const data = (await response.json()) as {
+        results?: { title?: string }[];
+      };
+      const suggestions =
+        data.results
+          ?.map((result) => result.title?.trim())
+          .filter((title): title is string => Boolean(title))
+          .map((title) => `Research: ${title}`) ?? [];
+      return new Response(JSON.stringify({ suggestions }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
     return (
       (await routeAgentRequest(request, env)) ||
       new Response("Not found", { status: 404 })
